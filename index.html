@@ -3,22 +3,18 @@
 <head>
     <title>3D Skee-Ball</title>
     <style>
-        body { margin: 0; overflow: hidden; background: #18191c; font-family: sans-serif; }
+        body { margin: 0; overflow: hidden; background: #18191c; }
+        canvas { display: block; width: 100vw; height: 100vh; }
         #ui {
             position: absolute; top: 20px; width: 100%; text-align: center;
-            color: white; font-size: 24px; font-weight: bold; pointer-events: none;
+            color: white; font-size: 24px; font-family: sans-serif; pointer-events: none;
+            text-shadow: 2px 2px 4px #000;
         }
-        #power-bar {
-            position: absolute; bottom: 50px; left: 50%; transform: translateX(-50%);
-            width: 200px; height: 20px; border: 2px solid white; display: none;
-        }
-        #fill { width: 0%; height: 100%; background: #5865f2; }
     </style>
 </head>
 <body>
     <div id="ui">SCORE: <span id="score">0</span></div>
-    <div id="power-bar"><div id="fill"></div></div>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="game.js"></script>
 </body>
 </html>
