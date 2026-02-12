@@ -5,52 +5,77 @@ function init() {
     scene.background = new THREE.Color(0x23272a);
 
     camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    camera.position.set(0, 2, 5);
+    camera.position.set(0, 5, 10);
 
     renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
     document.body.appendChild(renderer.domElement);
 
-    // --- Studio Lighting ---
-    const light1 = new THREE.DirectionalLight(0xffffff, 1);
-    light1.position.set(5, 5, 5);
-    scene.add(light1);
-    scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+    scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+    const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+    dirLight.position.set(5, 10, 7.5);
+    scene.add(dirLight);
 
     animate();
 }
 
-function loadModel(type) {
-    if (currentModel) scene.remove(currentModel);
-    document.getElementById('loading').style.display = 'block';
+// --- The Upload Logic ---
+document.getElementById('fileInput').addEventListener('change', function(event) {
+    const file = event.target.files[0];
+    if (!file) return;
 
-    const loader = (type === 'obj') ? new THREE.OBJLoader() : new THREE.FBXLoader();
-    const extension = (type === 'obj') ? '.obj' : '.fbx';
+    const fileName = file.name.toLowerCase();
+    const reader = new FileReader();
     
-    // Replace 'my_model' with your actual file name in your assets folder
-    loader.load(`assets/test_model${extension}`, (object) => {
+    document.getElementById('loading').style.display = 'inline-block';
+
+    reader.onload = function(e) {
+        const contents = e.target.result;
+        const url = URL.createObjectURL(new Blob([contents]));
+
+        if (fileName.endsWith('.obj')) {
+            loadWithLoader(new THREE.OBJLoader(), url);
+        } else if (fileName.endsWith('.fbx')) {
+            loadWithLoader(new THREE.FBXLoader(), url);
+        } else {
+            alert("Unsupported file format!");
+            document.getElementById('loading').style.display = 'none';
+        }
+    };
+
+    // Read file as ArrayBuffer for binary FBX support
+    reader.readAsArrayBuffer(file);
+});
+
+function loadWithLoader(loader, url) {
+    loader.load(url, (object) => {
+        if (currentModel) scene.remove(currentModel);
+        
         currentModel = object;
         
-        // Auto-scale to fit screen
+        // Center and Scale the model automatically
         const box = new THREE.Box3().setFromObject(object);
+        const size = box.getSize(new THREE.Vector3()).length();
         const center = box.getCenter(new THREE.Vector3());
-        object.position.sub(center); // Center the model
         
+        object.position.x += (object.position.x - center.x);
+        object.position.y += (object.position.y - center.y);
+        object.position.z += (object.position.z - center.z);
+        
+        const scale = 5 / size; // Normalize size to fit view
+        object.scale.set(scale, scale, scale);
+
         scene.add(object);
         document.getElementById('loading').style.display = 'none';
-    }, 
-    (xhr) => { console.log((xhr.loaded / xhr.total * 100) + '% loaded'); },
-    (error) => { 
-        console.error(error);
-        document.getElementById('loading').innerText = "Error Loading!";
+    }, undefined, (err) => {
+        console.error(err);
+        document.getElementById('loading').innerText = "Error parsing file!";
     });
 }
 
 function animate() {
     requestAnimationFrame(animate);
-    if (currentModel) {
-        currentModel.rotation.y += 0.01; // Auto-rotate for display
-    }
+    if (currentModel) currentModel.rotation.y += 0.005;
     renderer.render(scene, camera);
 }
 
