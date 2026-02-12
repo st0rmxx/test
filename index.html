@@ -1,35 +1,67 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Tactics Board</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Tactical Board</title>
     <style>
-        body { margin: 0; background: #18191c; font-family: sans-serif; overflow: hidden; }
-        #toolbar {
-            position: absolute; top: 10px; left: 10px;
-            display: flex; gap: 10px; background: rgba(0,0,0,0.8);
-            padding: 10px; border-radius: 8px;
+        body { 
+            margin: 0; 
+            padding: 0; 
+            overflow: hidden; 
+            background-color: #18191c; /* Discord Dark */
+            touch-action: none; /* Prevents scrolling while drawing */
         }
-        canvas { display: block; cursor: crosshair; }
-        .btn {
-            background: #5865f2; color: white; border: none; padding: 8px 15px;
-            border-radius: 4px; cursor: pointer; font-weight: bold;
+        #ui-container {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            z-index: 10;
+            display: flex;
+            gap: 8px;
+            background: rgba(30, 31, 34, 0.9);
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #4e5058;
+            pointer-events: auto;
         }
-        .btn.active { background: #ed4245; }
-        .color-p { width: 30px; height: 30px; border-radius: 50%; border: 2px solid white; cursor: pointer; }
+        canvas {
+            display: block;
+            background-color: #2e7d32; /* Pitch Green */
+            cursor: crosshair;
+        }
+        .tool-btn {
+            background: #5865f2;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 12px;
+        }
+        .tool-btn:active { background: #4752c4; }
+        .color-dot {
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            border: 2px solid #ffffff;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
 
-<div id="toolbar">
-    <button class="btn" id="drawBtn">BRUSH</button>
-    <button class="btn" id="eraseBtn">ERASER</button>
-    <button class="btn" onclick="clearBoard()" style="background:#4f545c">CLEAR</button>
-    <div class="color-p" style="background: #ffffff" onclick="setColor('#ffffff')"></div>
-    <div class="color-p" style="background: #ffff00" onclick="setColor('#ffff00')"></div>
-    <div class="color-p" style="background: #00ff00" onclick="setColor('#00ff00')"></div>
+<div id="ui-container">
+    <button class="tool-btn" onclick="setMode('draw')">BRUSH</button>
+    <button class="tool-btn" onclick="setMode('erase')" style="background:#4f545c">ERASER</button>
+    <button class="tool-btn" onclick="clearBoard()" style="background:#ed4245">CLEAR</button>
+    <div class="color-dot" style="background: #ffffff" onclick="setColor('#ffffff')"></div>
+    <div class="color-dot" style="background: #ffff00" onclick="setColor('#ffff00')"></div>
+    <div class="color-dot" style="background: #00ffff" onclick="setColor('#00ffff')"></div>
 </div>
 
-<canvas id="whiteboard"></canvas>
+<canvas id="tacticBoard"></canvas>
 
 <script src="game.js"></script>
 </body>
