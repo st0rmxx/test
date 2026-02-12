@@ -1,88 +1,88 @@
-let scene, camera, renderer, currentModel;
+const canvas = document.getElementById('whiteboard');
+const ctx = canvas.getContext('2d');
 
-function init() {
-    scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x23272a);
+let drawing = false;
+let mode = 'draw'; // 'draw' or 'erase'
+let color = '#ffffff';
 
-    camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    camera.position.set(0, 5, 10);
-
-    renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    document.body.appendChild(renderer.domElement);
-
-    scene.add(new THREE.AmbientLight(0xffffff, 0.8));
-    const dirLight = new THREE.DirectionalLight(0xffffff, 1);
-    dirLight.position.set(5, 10, 7.5);
-    scene.add(dirLight);
-
-    animate();
+// Set Canvas Size
+function resize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    drawPitch(); // Redraw pitch whenever resized
 }
 
-// --- The Upload Logic ---
-document.getElementById('fileInput').addEventListener('change', function(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    const fileName = file.name.toLowerCase();
-    const reader = new FileReader();
+function drawPitch() {
+    // Green Pitch
+    ctx.fillStyle = '#2e7d32';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
     
-    document.getElementById('loading').style.display = 'inline-block';
+    // Pitch Lines
+    ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+    ctx.lineWidth = 3;
+    
+    // Outer boundary
+    ctx.strokeRect(50, 50, canvas.width - 100, canvas.height - 100);
+    
+    // Halfway line
+    ctx.beginPath();
+    ctx.moveTo(canvas.width / 2, 50);
+    ctx.lineTo(canvas.width / 2, canvas.height - 50);
+    ctx.stroke();
 
-    reader.onload = function(e) {
-        const contents = e.target.result;
-        const url = URL.createObjectURL(new Blob([contents]));
-
-        if (fileName.endsWith('.obj')) {
-            loadWithLoader(new THREE.OBJLoader(), url);
-        } else if (fileName.endsWith('.fbx')) {
-            loadWithLoader(new THREE.FBXLoader(), url);
-        } else {
-            alert("Unsupported file format!");
-            document.getElementById('loading').style.display = 'none';
-        }
-    };
-
-    // Read file as ArrayBuffer for binary FBX support
-    reader.readAsArrayBuffer(file);
-});
-
-function loadWithLoader(loader, url) {
-    loader.load(url, (object) => {
-        if (currentModel) scene.remove(currentModel);
-        
-        currentModel = object;
-        
-        // Center and Scale the model automatically
-        const box = new THREE.Box3().setFromObject(object);
-        const size = box.getSize(new THREE.Vector3()).length();
-        const center = box.getCenter(new THREE.Vector3());
-        
-        object.position.x += (object.position.x - center.x);
-        object.position.y += (object.position.y - center.y);
-        object.position.z += (object.position.z - center.z);
-        
-        const scale = 5 / size; // Normalize size to fit view
-        object.scale.set(scale, scale, scale);
-
-        scene.add(object);
-        document.getElementById('loading').style.display = 'none';
-    }, undefined, (err) => {
-        console.error(err);
-        document.getElementById('loading').innerText = "Error parsing file!";
-    });
+    // Center Circle
+    ctx.beginPath();
+    ctx.arc(canvas.width / 2, canvas.height / 2, 80, 0, Math.PI * 2);
+    ctx.stroke();
 }
 
-function animate() {
-    requestAnimationFrame(animate);
-    if (currentModel) currentModel.rotation.y += 0.005;
-    renderer.render(scene, camera);
+
+
+// Drawing Logic
+function startPos(e) {
+    drawing = true;
+    draw(e);
 }
 
-init();
+function endPos() {
+    drawing = false;
+    ctx.beginPath(); // Resets the line path so it doesn't connect dots
+}
 
-window.addEventListener('resize', () => {
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
-});
+function draw(e) {
+    if (!drawing) return;
+
+    ctx.lineWidth = mode === 'erase' ? 40 : 5;
+    ctx.lineCap = 'round';
+    
+    // If erasing, use the pitch color, otherwise use chosen color
+    ctx.strokeStyle = mode === 'erase' ? '#2e7d32' : color;
+
+    // Support both mouse and touch for Discord mobile
+    const x = e.clientX || e.touches[0].clientX;
+    const y = e.clientY || e.touches[0].clientY;
+
+    ctx.lineTo(x, y);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+}
+
+// Tool Switchers
+document.getElementById('drawBtn').onclick = () => mode = 'draw';
+document.getElementById('eraseBtn').onclick = () => mode = 'erase';
+window.setColor = (c) => { color = c; mode = 'draw'; };
+window.clearBoard = () => drawPitch();
+
+// Listeners
+canvas.addEventListener('mousedown', startPos);
+canvas.addEventListener('mouseup', endPos);
+canvas.addEventListener('mousemove', draw);
+
+// Mobile Support
+canvas.addEventListener('touchstart', (e) => { e.preventDefault(); startPos(e); }, {passive: false});
+canvas.addEventListener('touchend', endPos);
+canvas.addEventListener('touchmove', (e) => { e.preventDefault(); draw(e); }, {passive: false});
+
+window.addEventListener('resize', resize);
+resize();
