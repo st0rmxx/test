@@ -1,108 +1,124 @@
-// --- 1. Scene & Renderer Setup ---
-const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x23272a); // Dark Discord theme
-
-const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setSize(window.innerWidth, window.innerHeight);
-document.body.appendChild(renderer.domElement);
-
-// --- 2. Lighting (Essential!) ---
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.7); 
-scene.add(ambientLight);
-
-const pointLight = new THREE.PointLight(0xffffff, 0.8);
-pointLight.position.set(5, 10, 7);
-scene.add(pointLight);
-
-// --- 3. Camera Positioning ---
-camera.position.set(0, 5, 8); // Move camera up and back
-camera.lookAt(0, 0, 0);       // Point at the center of the world
-
-// --- 4. Game Logic & State ---
-const COLORS = ['Red', 'Blue', 'Green', 'Yellow'];
-const HEX_COLORS = { 'Red': 0xff5555, 'Blue': 0x5555ff, 'Green': 0x55aa55, 'Yellow': 0xffaa00 };
-let hand = [];
-let topCard = null;
-
-// --- 5. Functions ---
-function createCardMesh(color, value) {
-    const geometry = new THREE.BoxGeometry(1, 1.5, 0.1);
-    const material = new THREE.MeshStandardMaterial({ color: HEX_COLORS[color] });
-    const mesh = new THREE.Mesh(geometry, material);
-    
-    mesh.userData = { color, value };
-    scene.add(mesh);
-    return mesh;
-}
-
-window.drawCard = () => {
-    const color = COLORS[Math.floor(Math.random() * COLORS.length)];
-    const value = Math.floor(Math.random() * 10).toString();
-    const card = createCardMesh(color, value);
-    hand.push(card);
-    updateHandLayout();
-};
-
-function updateHandLayout() {
-    hand.forEach((card, i) => {
-        const xPos = (i - (hand.length - 1) / 2) * 1.3;
-        card.position.set(xPos, -2, 4); // Position cards at bottom of screen
-        card.rotation.set(-0.4, 0, 0);  // Tilt toward camera
-    });
-}
-
-function playCard(card) {
-    const { color, value } = card.userData;
-    
-    // Check UNO Rules
-    if (!topCard || color === topCard.color || value === topCard.value) {
-        if (topCard) scene.remove(topCard.mesh); // Remove previous discard
-        
-        topCard = { color, value, mesh: card };
-        
-        // Move card to the center "Discard Pile"
-        card.position.set(0, 0, 0);
-        card.rotation.set(0, 0, 0);
-        
-        hand = hand.filter(c => c !== card); // Remove from player hand
-        document.getElementById('current-target').innerText = `${color} ${value}`;
-        updateHandLayout();
-    } else {
-        const err = document.getElementById('error-msg');
-        err.style.display = 'block';
-        setTimeout(() => err.style.display = 'none', 1500);
-    }
-}
-
-// --- 6. Interaction (Clicking 3D Objects) ---
-const raycaster = new THREE.Raycaster();
-const mouse = new THREE.Vector2();
-
-window.addEventListener('mousedown', (event) => {
-    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-
-    raycaster.setFromCamera(mouse, camera);
-    const intersects = raycaster.intersectObjects(hand);
-
-    if (intersects.length > 0) {
-        playCard(intersects[0].object);
-    }
-});
-
-// --- 7. Initialization & Loop ---
-for(let i=0; i<5; i++) drawCard(); // Start with 5 cards
-
-function animate() {
-    requestAnimationFrame(animate);
-    renderer.render(scene, camera);
-}
-animate();
-
-// Handle Window Resize
-window.addEventListener('resize', () => {
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
+window.onload = () => {
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x23272a);
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
-});
+    document.body.appendChild(renderer.domElement);
+
+    // Lights
+    scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+    const light = new THREE.PointLight(0xffffff, 1);
+    light.position.set(0, 10, 0);
+    scene.add(light);
+
+    // --- 1. The Alley ---
+    const alleyGeo = new THREE.BoxGeometry(4, 0.5, 20);
+    const alleyMat = new THREE.MeshStandardMaterial({ color: 0x8b4513 });
+    const alley = new THREE.Mesh(alleyGeo, alleyMat);
+    alley.position.z = -5;
+    scene.add(alley);
+
+    // --- 2. The Rings (Targets) ---
+    function createRing(radius, z, points, color) {
+        const geo = new THREE.TorusGeometry(radius, 0.1, 16, 100);
+        const mat = new THREE.MeshStandardMaterial({ color: color });
+        const ring = new THREE.Mesh(geo, mat);
+        ring.rotation.x = Math.PI / 2;
+        ring.position.set(0, 0.5, z);
+        ring.userData = { points };
+        scene.add(ring);
+        return ring;
+    }
+
+    const rings = [
+        createRing(1.5, -12, 10, 0xffffff),
+        createRing(1.0, -13, 50, 0xff0000),
+        createRing(0.5, -14, 100, 0x0000ff)
+    ];
+
+    // --- 3. The Ball ---
+    const ballGeo = new THREE.SphereGeometry(0.3, 32, 32);
+    const ballMat = new THREE.MeshStandardMaterial({ color: 0xffaa00 });
+    const ball = new THREE.Mesh(ballGeo, ballMat);
+    scene.add(ball);
+
+    camera.position.set(0, 5, 10);
+    camera.lookAt(0, 0, -5);
+
+    // --- 4. Physics & Controls ---
+    let score = 0;
+    let isRolling = false;
+    let velocity = new THREE.Vector3(0, 0, 0);
+    let power = 0;
+    let charging = false;
+
+    window.addEventListener('mousedown', () => { 
+        if (!isRolling) {
+            charging = true;
+            power = 0;
+            document.getElementById('power-bar').style.display = 'block';
+        }
+    });
+
+    window.addEventListener('mouseup', () => {
+        if (charging) {
+            charging = false;
+            isRolling = true;
+            velocity.z = -0.1 - (power * 0.4); // Force based on charge
+            velocity.y = 0.15; // Small jump for the "ramp"
+            document.getElementById('power-bar').style.display = 'none';
+        }
+    });
+
+    function resetBall() {
+        isRolling = false;
+        ball.position.set(0, 0.5, 5);
+        velocity.set(0,0,0);
+    }
+
+    function animate() {
+        requestAnimationFrame(animate);
+
+        if (charging) {
+            power = Math.min(power + 0.02, 1);
+            document.getElementById('fill').style.width = (power * 100) + '%';
+        }
+
+        if (isRolling) {
+            ball.position.add(velocity);
+            velocity.y -= 0.005; // Simple gravity
+
+            // Bounce off the alley floor
+            if (ball.position.y < 0.5) {
+                ball.position.y = 0.5;
+                velocity.y *= -0.5; // Dampen bounce
+            }
+
+            // Check if ball passed rings
+            if (ball.position.z < -15) {
+                checkScore();
+                resetBall();
+            }
+        }
+
+        renderer.render(scene, camera);
+    }
+
+    function checkScore() {
+        // Logic: Check distance from ball to ring centers
+        let earned = 0;
+        rings.forEach(r => {
+            const dist = ball.position.distanceTo(r.position);
+            if (dist < r.geometry.parameters.radius) earned = r.userData.points;
+        });
+        
+        if (earned > 0) {
+            score += earned;
+            document.getElementById('score').innerText = score;
+        }
+    }
+
+    resetBall();
+    animate();
+};
