@@ -5,21 +5,25 @@ let drawing = false;
 let mode = 'draw';
 let color = '#ffffff';
 
-// --- The Pitch Background & Lines ---
+// This is the core fix: A function that draws the pitch dynamically
 function drawField() {
-    // Fill the whole background green
+    // 1. Match canvas internal resolution to the window size
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    // 2. Fill Background
     ctx.fillStyle = '#2e7d32';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Draw pitch markings
+    // 3. Draw Pitch Markings (Dynamic based on current width/height)
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
     ctx.lineWidth = 4;
     
-    const m = 40; // margin
+    const m = 40; // margin from edges
     const w = canvas.width - (m * 2);
     const h = canvas.height - (m * 2);
 
-    // Boundaries
+    // Outer pitch boundary
     ctx.strokeRect(m, m, w, h);
     
     // Halfway line
@@ -30,48 +34,29 @@ function drawField() {
 
     // Center Circle
     ctx.beginPath();
-    ctx.arc(canvas.width / 2, canvas.height / 2, h * 0.15, 0, Math.PI * 2);
+    ctx.arc(canvas.width / 2, canvas.height / 2, Math.min(w, h) * 0.15, 0, Math.PI * 2);
     ctx.stroke();
 
-    // Penalty Boxes
+    // Penalty Areas
     const boxH = h * 0.4;
-    ctx.strokeRect(m, (canvas.height - boxH) / 2, w * 0.15, boxH); // Left
-    ctx.strokeRect(canvas.width - m - (w * 0.15), (canvas.height - boxH) / 2, w * 0.15, boxH); // Right
+    ctx.strokeRect(m, (canvas.height - boxH) / 2, w * 0.12, boxH); // Left
+    ctx.strokeRect(canvas.width - m - (w * 0.12), (canvas.height - boxH) / 2, w * 0.12, boxH); // Right
 }
 
 
-// --- Handling the "Small Box" Bug ---
-function resize() {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-    drawField();
-}
-
-// Watch for Discord window changes
-const observer = new ResizeObserver(entries => {
-    for (let entry of entries) {
-        resize();
-    }
-});
-observer.observe(document.body);
-
-// --- Drawing Interaction ---
-function getCoords(e) {
+// --- Interaction Logic ---
+function getPos(e) {
     const x = e.clientX || (e.touches && e.touches[0].clientX);
     const y = e.clientY || (e.touches && e.touches[0].clientY);
     return { x, y };
 }
 
-function start(e) {
-    drawing = true;
-    const { x, y } = getCoords(e);
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-}
+canvas.addEventListener('mousedown', (e) => { drawing = true; ctx.beginPath(); });
+window.addEventListener('mouseup', () => { drawing = false; });
 
-function draw(e) {
+canvas.addEventListener('mousemove', (e) => {
     if (!drawing) return;
-    const { x, y } = getCoords(e);
+    const { x, y } = getPos(e);
     
     ctx.lineWidth = mode === 'erase' ? 40 : 6;
     ctx.lineCap = 'round';
@@ -80,26 +65,21 @@ function draw(e) {
 
     ctx.lineTo(x, y);
     ctx.stroke();
-}
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+});
 
-function stop() {
-    drawing = false;
-}
-
-// Tool Global Functions
+// Tool Handlers
 window.setMode = (m) => mode = m;
 window.setColor = (c) => { color = c; mode = 'draw'; };
 window.clearBoard = () => drawField();
 
-// Listeners
-canvas.addEventListener('mousedown', start);
-canvas.addEventListener('mousemove', draw);
-window.addEventListener('mouseup', stop);
+// --- THE DISCORD FIX: Resize Observer ---
+// This watches for the exact moment Discord expands the window
+const resizeObserver = new ResizeObserver(() => {
+    drawField();
+});
+resizeObserver.observe(document.body);
 
-// Mobile/Touch Support
-canvas.addEventListener('touchstart', (e) => { e.preventDefault(); start(e); }, {passive: false});
-canvas.addEventListener('touchmove', (e) => { e.preventDefault(); draw(e); }, {passive: false});
-canvas.addEventListener('touchend', stop);
-
-// Initial call
-resize();
+// Initial draw
+drawField();
