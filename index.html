@@ -3,27 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Discord UNO</title>
+    <title>3D UNO - Discord Activity</title>
     <style>
-        body { background: #2c2f33; color: white; font-family: sans-serif; text-align: center; }
-        .hand { display: flex; justify-content: center; gap: 10px; margin-top: 50px; }
-        .card { 
-            width: 80px; height: 120px; border-radius: 8px; 
-            display: flex; align-items: center; justify-content: center;
-            font-weight: bold; font-size: 20px; cursor: pointer; border: 2px solid white;
+        body { margin: 0; overflow: hidden; background: #1a1a1a; font-family: sans-serif; }
+        #ui-layer {
+            position: absolute; top: 20px; width: 100%;
+            text-align: center; color: white; pointer-events: none;
         }
-        .Red { background: #ff5555; } .Blue { background: #5555ff; }
-        .Green { background: #55aa55; } .Yellow { background: #ffaa00; }
-        #discard-pile { width: 100px; height: 140px; border: 3px dashed #999; margin: 20px auto; display: flex; align-items: center; justify-content: center; }
+        #error-msg {
+            background: rgba(255, 0, 0, 0.7); padding: 10px;
+            display: none; border-radius: 5px;
+        }
     </style>
 </head>
 <body>
-    <h1>UNO: Discord Edition</h1>
-    <div id="discard-pile">Discard</div>
-    <div id="player-hand" class="hand"></div>
-    <button onclick="drawCard()" style="margin-top: 20px; padding: 10px;">Draw Card</button>
+    <div id="ui-layer">
+        <h2 id="status">Your Turn</h2>
+        <div id="error-msg">Invalid Move!</div>
+    </div>
 
-    <script src="https://unpkg.com/@discord/embedded-app-sdk"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="game.js"></script>
 </body>
 </html>
