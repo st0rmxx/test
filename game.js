@@ -5,86 +5,101 @@ let drawing = false;
 let mode = 'draw';
 let color = '#ffffff';
 
+// --- The Pitch Background & Lines ---
+function drawField() {
+    // Fill the whole background green
+    ctx.fillStyle = '#2e7d32';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Draw pitch markings
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+    ctx.lineWidth = 4;
+    
+    const m = 40; // margin
+    const w = canvas.width - (m * 2);
+    const h = canvas.height - (m * 2);
+
+    // Boundaries
+    ctx.strokeRect(m, m, w, h);
+    
+    // Halfway line
+    ctx.beginPath();
+    ctx.moveTo(canvas.width / 2, m);
+    ctx.lineTo(canvas.width / 2, h + m);
+    ctx.stroke();
+
+    // Center Circle
+    ctx.beginPath();
+    ctx.arc(canvas.width / 2, canvas.height / 2, h * 0.15, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Penalty Boxes
+    const boxH = h * 0.4;
+    ctx.strokeRect(m, (canvas.height - boxH) / 2, w * 0.15, boxH); // Left
+    ctx.strokeRect(canvas.width - m - (w * 0.15), (canvas.height - boxH) / 2, w * 0.15, boxH); // Right
+}
+
+
+// --- Handling the "Small Box" Bug ---
 function resize() {
-    // Force the canvas to the actual size of the window
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
     drawField();
 }
 
-function drawField() {
-    // Pitch Background
-    ctx.fillStyle = '#2e7d32';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+// Watch for Discord window changes
+const observer = new ResizeObserver(entries => {
+    for (let entry of entries) {
+        resize();
+    }
+});
+observer.observe(document.body);
 
-    // Field Markings
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
-    ctx.lineWidth = 4;
-    
-    const margin = 50;
-    const w = canvas.width - (margin * 2);
-    const h = canvas.height - (margin * 2);
-
-    // Outer Boundary
-    ctx.strokeRect(margin, margin, w, h);
-
-    // Center Line
-    ctx.beginPath();
-    ctx.moveTo(canvas.width / 2, margin);
-    ctx.lineTo(canvas.width / 2, canvas.height - margin);
-    ctx.stroke();
-
-    // Center Circle
-    ctx.beginPath();
-    ctx.arc(canvas.width / 2, canvas.height / 2, 70, 0, Math.PI * 2);
-    ctx.stroke();
-}
-
-
-// Core Drawing Logic
-function start(e) {
-    drawing = true;
-    draw(e);
-}
-
-function stop() {
-    drawing = false;
-    ctx.beginPath();
-}
-
-function draw(e) {
-    if (!drawing) return;
-
+// --- Drawing Interaction ---
+function getCoords(e) {
     const x = e.clientX || (e.touches && e.touches[0].clientX);
     const y = e.clientY || (e.touches && e.touches[0].clientY);
+    return { x, y };
+}
 
-    ctx.lineWidth = mode === 'erase' ? 40 : 6;
-    ctx.lineCap = 'round';
-    ctx.strokeStyle = mode === 'erase' ? '#2e7d32' : color;
-
-    ctx.lineTo(x, y);
-    ctx.stroke();
+function start(e) {
+    drawing = true;
+    const { x, y } = getCoords(e);
     ctx.beginPath();
     ctx.moveTo(x, y);
 }
 
-// Global UI Functions
+function draw(e) {
+    if (!drawing) return;
+    const { x, y } = getCoords(e);
+    
+    ctx.lineWidth = mode === 'erase' ? 40 : 6;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = mode === 'erase' ? '#2e7d32' : color;
+
+    ctx.lineTo(x, y);
+    ctx.stroke();
+}
+
+function stop() {
+    drawing = false;
+}
+
+// Tool Global Functions
 window.setMode = (m) => mode = m;
 window.setColor = (c) => { color = c; mode = 'draw'; };
 window.clearBoard = () => drawField();
 
-// Event Listeners
+// Listeners
 canvas.addEventListener('mousedown', start);
 canvas.addEventListener('mousemove', draw);
 window.addEventListener('mouseup', stop);
 
-// Touch Support
-canvas.addEventListener('touchstart', (e) => { start(e); e.preventDefault(); }, {passive: false});
-canvas.addEventListener('touchmove', (e) => { draw(e); e.preventDefault(); }, {passive: false});
+// Mobile/Touch Support
+canvas.addEventListener('touchstart', (e) => { e.preventDefault(); start(e); }, {passive: false});
+canvas.addEventListener('touchmove', (e) => { e.preventDefault(); draw(e); }, {passive: false});
+canvas.addEventListener('touchend', stop);
 
-// The "Discord Fix": Resize immediately and then again after 500ms
-window.addEventListener('resize', resize);
+// Initial call
 resize();
-setTimeout(resize, 500); 
-
-window.onload = resize;
