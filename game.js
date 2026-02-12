@@ -1,71 +1,66 @@
-const canvas = document.getElementById('tacticBoard');
-const ctx = canvas.getContext('2d', { alpha: false }); // alpha: false improves performance
+const canvas = document.getElementById('board');
+const ctx = canvas.getContext('2d', { alpha: false });
 
-let isDrawing = false;
-let currentMode = 'draw';
-let currentColor = '#ffffff';
+let drawing = false;
+let mode = 'draw';
+let color = '#ffffff';
 
-// 1. Initialize Canvas Size
-function initCanvas() {
+function resize() {
+    // Force the canvas to the actual size of the window
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
-    drawPitchBase();
+    drawField();
 }
 
-// 2. Draw the Football Pitch Layout
-function drawPitchBase() {
-    // Fill background
+function drawField() {
+    // Pitch Background
     ctx.fillStyle = '#2e7d32';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Set line style
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+    // Field Markings
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
     ctx.lineWidth = 4;
+    
+    const margin = 50;
+    const w = canvas.width - (margin * 2);
+    const h = canvas.height - (margin * 2);
 
-    // Outer box
-    ctx.strokeRect(40, 40, canvas.width - 80, canvas.height - 80);
+    // Outer Boundary
+    ctx.strokeRect(margin, margin, w, h);
 
-    // Halfway line
+    // Center Line
     ctx.beginPath();
-    ctx.moveTo(canvas.width / 2, 40);
-    ctx.lineTo(canvas.width / 2, canvas.height - 40);
+    ctx.moveTo(canvas.width / 2, margin);
+    ctx.lineTo(canvas.width / 2, canvas.height - margin);
     ctx.stroke();
 
-    // Center circle
+    // Center Circle
     ctx.beginPath();
-    ctx.arc(canvas.width / 2, canvas.height / 2, 60, 0, Math.PI * 2);
+    ctx.arc(canvas.width / 2, canvas.height / 2, 70, 0, Math.PI * 2);
     ctx.stroke();
-
-    // Penalty Areas
-    ctx.strokeRect(40, canvas.height / 2 - 100, 120, 200); // Left
-    ctx.strokeRect(canvas.width - 160, canvas.height / 2 - 100, 120, 200); // Right
 }
 
 
-
-// 3. Drawing Logic
-function startDrawing(e) {
-    isDrawing = true;
+// Core Drawing Logic
+function start(e) {
+    drawing = true;
     draw(e);
 }
 
-function stopDrawing() {
-    isDrawing = false;
+function stop() {
+    drawing = false;
     ctx.beginPath();
 }
 
 function draw(e) {
-    if (!isDrawing) return;
+    if (!drawing) return;
 
-    // Get correct coordinates for Mouse or Touch
-    const rect = canvas.getBoundingClientRect();
-    const x = (e.clientX || (e.touches && e.touches[0].clientX)) - rect.left;
-    const y = (e.clientY || (e.touches && e.touches[0].clientY)) - rect.top;
+    const x = e.clientX || (e.touches && e.touches[0].clientX);
+    const y = e.clientY || (e.touches && e.touches[0].clientY);
 
-    ctx.lineWidth = currentMode === 'erase' ? 40 : 6;
+    ctx.lineWidth = mode === 'erase' ? 40 : 6;
     ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    ctx.strokeStyle = currentMode === 'erase' ? '#2e7d32' : currentColor;
+    ctx.strokeStyle = mode === 'erase' ? '#2e7d32' : color;
 
     ctx.lineTo(x, y);
     ctx.stroke();
@@ -73,26 +68,23 @@ function draw(e) {
     ctx.moveTo(x, y);
 }
 
-// 4. Tool Controls
-window.setMode = (mode) => { currentMode = mode; };
-window.setColor = (color) => { 
-    currentColor = color; 
-    currentMode = 'draw'; 
-};
-window.clearBoard = () => { drawPitchBase(); };
+// Global UI Functions
+window.setMode = (m) => mode = m;
+window.setColor = (c) => { color = c; mode = 'draw'; };
+window.clearBoard = () => drawField();
 
-// 5. Event Listeners
-canvas.addEventListener('mousedown', startDrawing);
+// Event Listeners
+canvas.addEventListener('mousedown', start);
 canvas.addEventListener('mousemove', draw);
-window.addEventListener('mouseup', stopDrawing);
+window.addEventListener('mouseup', stop);
 
-// Touch Support (Discord Mobile)
-canvas.addEventListener('touchstart', (e) => { startDrawing(e); e.preventDefault(); }, { passive: false });
-canvas.addEventListener('touchmove', (e) => { draw(e); e.preventDefault(); }, { passive: false });
-window.addEventListener('touchend', stopDrawing);
+// Touch Support
+canvas.addEventListener('touchstart', (e) => { start(e); e.preventDefault(); }, {passive: false});
+canvas.addEventListener('touchmove', (e) => { draw(e); e.preventDefault(); }, {passive: false});
 
-// Resize handling
-window.addEventListener('resize', initCanvas);
+// The "Discord Fix": Resize immediately and then again after 500ms
+window.addEventListener('resize', resize);
+resize();
+setTimeout(resize, 500); 
 
-// 6. Force start
-window.onload = initCanvas;
+window.onload = resize;
