@@ -1,73 +1,88 @@
-const canvas = document.getElementById('board');
-const ctx = canvas.getContext('2d', { desynchronized: true }); // Tells Discord to skip some security checks for speed
+// 1. Create and Inject Canvas immediately
+const canvas = document.createElement('canvas');
+canvas.style.position = 'fixed';
+canvas.style.top = '0';
+canvas.style.left = '0';
+canvas.style.zIndex = '1';
+document.body.appendChild(canvas);
 
-// Hidden canvas to store your actual drawings
-const buffer = document.createElement('canvas');
-const bCtx = buffer.getContext('2d');
+const ctx = canvas.getContext('2d', { alpha: false });
 
 let drawing = false;
 let mode = 'draw';
 let color = '#ffffff';
 
-function resize() {
-    canvas.width = buffer.width = window.innerWidth;
-    canvas.height = buffer.height = window.innerHeight;
-    clearBoard(); 
-}
-
-function clearBoard() {
-    // Fill the hidden buffer with Green
-    bCtx.fillStyle = '#2e7d32';
-    bCtx.fillRect(0, 0, buffer.width, buffer.height);
+function setup() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
     
-    // Draw the pitch lines on the hidden buffer
-    bCtx.strokeStyle = 'rgba(255,255,255,0.5)';
-    bCtx.lineWidth = 4;
-    bCtx.strokeRect(50, 50, buffer.width - 100, buffer.height - 100);
+    // Force a Green Fill immediately
+    ctx.fillStyle = '#2e7d32';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
     
-    bCtx.beginPath();
-    bCtx.moveTo(buffer.width/2, 50);
-    bCtx.lineTo(buffer.width/2, buffer.height - 50);
-    bCtx.stroke();
+    drawPitch();
+}
 
-    bCtx.beginPath();
-    bCtx.arc(buffer.width/2, buffer.height/2, 60, 0, Math.PI*2);
-    bCtx.stroke();
+function drawPitch() {
+    ctx.strokeStyle = 'white';
+    ctx.lineWidth = 4;
+    // Boundary
+    ctx.strokeRect(50, 50, canvas.width - 100, canvas.height - 100);
+    // Middle Line
+    ctx.beginPath();
+    ctx.moveTo(canvas.width / 2, 50);
+    ctx.lineTo(canvas.width / 2, canvas.height - 50);
+    ctx.stroke();
 }
 
 
 
-function draw(e) {
-    if (!drawing) return;
-    const x = e.clientX || (e.touches && e.touches[0].clientX);
-    const y = e.clientY || (e.touches && e.touches[0].clientY);
-
-    bCtx.lineWidth = mode === 'erase' ? 40 : 6;
-    bCtx.lineCap = 'round';
-    bCtx.strokeStyle = mode === 'erase' ? '#2e7d32' : color;
-
-    bCtx.lineTo(x, y);
-    bCtx.stroke();
-    bCtx.beginPath();
-    bCtx.moveTo(x, y);
+// 2. The Interaction Logic
+function getPos(e) {
+    const rect = canvas.getBoundingClientRect();
+    const x = (e.clientX || (e.touches && e.touches[0].clientX)) - rect.left;
+    const y = (e.clientY || (e.touches && e.touches[0].clientY)) - rect.top;
+    return { x, y };
 }
 
-// THE DISCORD FIX: This loop runs 60 times a second
-function loop() {
-    // Constantly copy the hidden green field to the visible screen
-    ctx.drawImage(buffer, 0, 0);
-    requestAnimationFrame(loop);
-}
+canvas.addEventListener('mousedown', (e) => { 
+    drawing = true; 
+    ctx.beginPath(); 
+    const {x, y} = getPos(e);
+    ctx.moveTo(x, y);
+});
 
-// Interaction Listeners
-canvas.addEventListener('mousedown', (e) => { drawing = true; bCtx.beginPath(); });
 window.addEventListener('mouseup', () => drawing = false);
-canvas.addEventListener('mousemove', draw);
 
-// Mobile Support for Discord App
-canvas.addEventListener('touchstart', (e) => { drawing = true; bCtx.beginPath(); e.preventDefault(); }, {passive:false});
-canvas.addEventListener('touchmove', (e) => { draw(e); e.preventDefault(); }, {passive:false});
+canvas.addEventListener('mousemove', (e) => {
+    if (!drawing) return;
+    const {x, y} = getPos(e);
+    ctx.lineWidth = mode === 'erase' ? 40 : 6;
+    ctx.strokeStyle = mode === 'erase' ? '#2e7d32' : color;
+    ctx.lineCap = 'round';
+    ctx.lineTo(x, y);
+    ctx.stroke();
+});
 
-window.addEventListener('resize', resize);
-resize();
-loop(); // Start the engine
+// 3. Global Helpers
+window.setMode = (m) => mode = m;
+
+// 4. Force-Refresh Loop (To fight Discord's "Black Out")
+function frame() {
+    // If the background is ever "not green", fill it again
+    // But we don't clear the whole canvas so the drawings stay
+    requestAnimationFrame(frame);
+}
+
+window.addEventListener('resize', setup);
+setup();
+frame();
+
+// Touch support for Mobile
+canvas.addEventListener('touchstart', (e) => { drawing = true; ctx.beginPath(); e.preventDefault(); }, {passive:false});
+canvas.addEventListener('touchmove', (e) => { 
+    if(!drawing) return;
+    const {x, y} = getPos(e);
+    ctx.lineTo(x,y); ctx.stroke();
+    e.preventDefault(); 
+}, {passive:false});
