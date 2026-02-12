@@ -1,103 +1,81 @@
 const canvas = document.getElementById('board');
-const ctx = canvas.getContext('2d', { alpha: false });
+const ctx = canvas.getContext('2d');
+
+// Create a second "virtual" canvas to store your drawings
+const offscreen = document.createElement('canvas');
+const oCtx = offscreen.getContext('2d');
 
 let drawing = false;
 let mode = 'draw';
 let color = '#ffffff';
 
-function syncAndDraw() {
-    // FORCE internal resolution to match screen size
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-
-    // Background
-    ctx.fillStyle = '#2e7d32';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // DRAW THE PITCH
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
-    ctx.lineWidth = 4;
+function init() {
+    canvas.width = offscreen.width = window.innerWidth;
+    canvas.height = offscreen.height = window.innerHeight;
     
-    // Calculate field based on center-point to ensure visibility
-    const centerX = canvas.width / 2;
-    const centerY = canvas.height / 2;
-    const fieldW = canvas.width * 0.9;
-    const fieldH = canvas.height * 0.85;
+    // Draw the initial field on the OFFSCREEN canvas
+    drawPitch(oCtx);
+}
 
-    // Main Boundary (Centered)
-    ctx.strokeRect(centerX - (fieldW/2), centerY - (fieldH/2), fieldW, fieldH);
+function drawPitch(context) {
+    context.fillStyle = '#2e7d32'; // Green
+    context.fillRect(0, 0, offscreen.width, offscreen.height);
+
+    context.strokeStyle = 'rgba(255,255,255,0.5)';
+    context.lineWidth = 4;
     
-    // Halfway Line
-    ctx.beginPath();
-    ctx.moveTo(centerX, centerY - (fieldH/2));
-    ctx.lineTo(centerX, centerY + (fieldH/2));
-    ctx.stroke();
-
-    // Center Circle
-    ctx.beginPath();
-    ctx.arc(centerX, centerY, Math.min(fieldW, fieldH) * 0.2, 0, Math.PI * 2);
-    ctx.stroke();
-
-    // Goal Boxes (Left & Right)
-    ctx.strokeRect(centerX - (fieldW/2), centerY - 100, fieldW * 0.1, 200);
-    ctx.strokeRect(centerX + (fieldW/2) - (fieldW * 0.1), centerY - 100, fieldW * 0.1, 200);
+    // Field boundary
+    const m = 50;
+    context.strokeRect(m, m, offscreen.width - m*2, offscreen.height - m*2);
+    
+    // Center line and circle
+    context.beginPath();
+    context.moveTo(offscreen.width/2, m);
+    context.lineTo(offscreen.width/2, offscreen.height - m);
+    context.stroke();
+    
+    context.beginPath();
+    context.arc(offscreen.width/2, offscreen.height/2, 60, 0, Math.PI*2);
+    context.stroke();
 }
 
 
-
-// Drawing Logic with Offset Correction
-function getMouse(e) {
-    const rect = canvas.getBoundingClientRect();
-    const x = (e.clientX || (e.touches && e.touches[0].clientX)) - rect.left;
-    const y = (e.clientY || (e.touches && e.touches[0].clientY)) - rect.top;
-    return { x, y };
-}
-
-canvas.addEventListener('mousedown', (e) => { 
-    drawing = true; 
-    const { x, y } = getMouse(e);
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-});
-
-window.addEventListener('mouseup', () => { drawing = false; });
-
-canvas.addEventListener('mousemove', (e) => {
+// Drawing interactions happen on the OFFSCREEN canvas
+function handleMove(e) {
     if (!drawing) return;
-    const { x, y } = getMouse(e);
-    
-    ctx.lineWidth = mode === 'erase' ? 40 : 6;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    ctx.strokeStyle = mode === 'erase' ? '#2e7d32' : color;
+    const x = e.clientX || (e.touches && e.touches[0].clientX);
+    const y = e.clientY || (e.touches && e.touches[0].clientY);
 
-    ctx.lineTo(x, y);
-    ctx.stroke();
-});
+    oCtx.lineWidth = mode === 'erase' ? 40 : 6;
+    oCtx.lineCap = 'round';
+    oCtx.strokeStyle = mode === 'erase' ? '#2e7d32' : color;
 
-// UI Controls
+    oCtx.lineTo(x, y);
+    oCtx.stroke();
+    oCtx.beginPath();
+    oCtx.moveTo(x, y);
+}
+
+// THE ENGINE: This runs 60 times a second to keep Discord's video buffer alive
+function renderLoop() {
+    // Copy the offscreen canvas to the visible one
+    ctx.drawImage(offscreen, 0, 0);
+    requestAnimationFrame(renderLoop);
+}
+
+// Global functions
 window.setMode = (m) => mode = m;
 window.setColor = (c) => { color = c; mode = 'draw'; };
-window.clearBoard = () => syncAndDraw();
+window.clearBoard = () => drawPitch(oCtx);
 
-// The "Discord expansion" safety net
-window.addEventListener('resize', syncAndDraw);
-// Run multiple times as Discord loads
-syncAndDraw();
-setTimeout(syncAndDraw, 100);
-setTimeout(syncAndDraw, 1000);
+canvas.addEventListener('mousedown', (e) => { drawing = true; oCtx.beginPath(); });
+window.addEventListener('mouseup', () => drawing = false);
+canvas.addEventListener('mousemove', handleMove);
 
-// Touch Support for Mobile Discord
-canvas.addEventListener('touchstart', (e) => { 
-    drawing = true; 
-    const { x, y } = getMouse(e);
-    ctx.beginPath(); ctx.moveTo(x, y);
-    e.preventDefault(); 
-}, {passive: false});
+// Touch support
+canvas.addEventListener('touchstart', (e) => { drawing = true; oCtx.beginPath(); e.preventDefault(); }, {passive:false});
+canvas.addEventListener('touchmove', (e) => { handleMove(e); e.preventDefault(); }, {passive:false});
 
-canvas.addEventListener('touchmove', (e) => {
-    if (!drawing) return;
-    const { x, y } = getMouse(e);
-    ctx.lineTo(x, y); ctx.stroke();
-    e.preventDefault();
-}, {passive: false});
+window.addEventListener('resize', init);
+init();
+renderLoop(); // Start the force-active loop
