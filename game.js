@@ -1,57 +1,63 @@
-// Wrap everything in a check to ensure the page is 100% loaded
-window.addEventListener('load', function() {
-    const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x23272a); // Discord Grey
+let scene, camera, renderer, currentModel;
 
-    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
-    
+function init() {
+    scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x23272a);
+
+    camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.set(0, 2, 5);
+
+    renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(window.devicePixelRatio);
     document.body.appendChild(renderer.domElement);
 
-    // 1. LIGHTING (Crucial: Without this, everything is black)
-    const light = new THREE.DirectionalLight(0xffffff, 1);
-    light.position.set(5, 10, 7.5);
-    scene.add(light);
-    scene.add(new THREE.AmbientLight(0x404040, 2));
+    // --- Studio Lighting ---
+    const light1 = new THREE.DirectionalLight(0xffffff, 1);
+    light1.position.set(5, 5, 5);
+    scene.add(light1);
+    scene.add(new THREE.AmbientLight(0xffffff, 0.5));
 
-    // 2. THE ALLEY (A long brown box)
-    const alleyGeo = new THREE.BoxGeometry(4, 0.5, 20);
-    const alleyMat = new THREE.MeshStandardMaterial({ color: 0x8b4513 });
-    const alley = new THREE.Mesh(alleyGeo, alleyMat);
-    alley.position.set(0, -0.25, -5);
-    scene.add(alley);
-
-    // 3. THE BALL (A bright orange sphere)
-    const ballGeo = new THREE.SphereGeometry(0.4, 32, 32);
-    const ballMat = new THREE.MeshStandardMaterial({ color: 0xffaa00 });
-    const ball = new THREE.Mesh(ballGeo, ballMat);
-    ball.position.set(0, 0.5, 5); // Place it near the camera
-    scene.add(ball);
-
-    // 4. CAMERA POSITION (Angled down)
-    camera.position.set(0, 5, 12); 
-    camera.lookAt(0, 0, 0);
-
-    // 5. RENDER LOOP
-    function animate() {
-        requestAnimationFrame(animate);
-        
-        // Let's add a tiny bit of rotation to the ball so we know the game is "alive"
-        ball.rotation.y += 0.01;
-        
-        renderer.render(scene, camera);
-    }
-    
     animate();
+}
 
-    // 6. RESIZE FIX (Discord windows change size a lot)
-    window.addEventListener('resize', () => {
-        camera.aspect = window.innerWidth / window.innerHeight;
-        camera.updateProjectionMatrix();
-        renderer.setSize(window.innerWidth, window.innerHeight);
+function loadModel(type) {
+    if (currentModel) scene.remove(currentModel);
+    document.getElementById('loading').style.display = 'block';
+
+    const loader = (type === 'obj') ? new THREE.OBJLoader() : new THREE.FBXLoader();
+    const extension = (type === 'obj') ? '.obj' : '.fbx';
+    
+    // Replace 'my_model' with your actual file name in your assets folder
+    loader.load(`assets/test_model${extension}`, (object) => {
+        currentModel = object;
+        
+        // Auto-scale to fit screen
+        const box = new THREE.Box3().setFromObject(object);
+        const center = box.getCenter(new THREE.Vector3());
+        object.position.sub(center); // Center the model
+        
+        scene.add(object);
+        document.getElementById('loading').style.display = 'none';
+    }, 
+    (xhr) => { console.log((xhr.loaded / xhr.total * 100) + '% loaded'); },
+    (error) => { 
+        console.error(error);
+        document.getElementById('loading').innerText = "Error Loading!";
     });
+}
 
-    console.log("3D Scene Initialized");
+function animate() {
+    requestAnimationFrame(animate);
+    if (currentModel) {
+        currentModel.rotation.y += 0.01; // Auto-rotate for display
+    }
+    renderer.render(scene, camera);
+}
+
+init();
+
+window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
 });
