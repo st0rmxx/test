@@ -1,81 +1,66 @@
-// --- 1. Scene Setup ---
+// --- 1. Scene & Setup ---
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
-// Lights
-const light = new THREE.PointLight(0xffffff, 1, 100);
-light.position.set(0, 5, 5);
-scene.add(light, new THREE.AmbientLight(0x404040));
+const loader = new THREE.TextureLoader();
+const cardBackTex = loader.load('assets/card_back.png'); // Upload a back image!
 
-// Table
-const tableGeo = new THREE.BoxGeometry(10, 0.2, 10);
-const tableMat = new THREE.MeshStandardMaterial({ color: 0x1d4d1d });
-const table = new THREE.Mesh(tableGeo, tableMat);
-table.position.y = -1;
-scene.add(table);
-
-camera.position.set(0, 4, 6);
-camera.lookAt(0, 0, 0);
-
-// --- 2. Game Logic State ---
-const cardColors = { 'Red': 0xff0000, 'Blue': 0x0000ff, 'Green': 0x00ff00, 'Yellow': 0xffff00 };
-let hand = [];
-let discardPile = [];
-const raycaster = new THREE.Raycaster();
-const mouse = new THREE.Vector2();
-
-// --- 3. Functions ---
-function createCardMesh(color, value, xPos) {
-    const geometry = new THREE.BoxGeometry(0.8, 1.2, 0.05);
-    const material = new THREE.MeshStandardMaterial({ color: cardColors[color] });
-    const card = new THREE.Mesh(geometry, material);
+// --- 2. Card Factory ---
+function create3DCard(color, value, x) {
+    const geometry = new THREE.BoxGeometry(1, 1.4, 0.05);
     
-    card.position.set(xPos, 0, 0);
-    card.userData = { color, value }; // Store game data inside 3D object
+    // In Three.js, a box has 6 sides. We map the front texture to index 4 or 5.
+    const frontTex = loader.load(`assets/${color}_${value}.png`); 
+    const materials = [
+        new THREE.MeshStandardMaterial({color: 0x888888}), // sides
+        new THREE.MeshStandardMaterial({color: 0x888888}), // sides
+        new THREE.MeshStandardMaterial({color: 0x888888}), // top
+        new THREE.MeshStandardMaterial({color: 0x888888}), // bottom
+        new THREE.MeshStandardMaterial({map: frontTex}),   // front
+        new THREE.MeshStandardMaterial({map: cardBackTex}) // back
+    ];
+
+    const card = new THREE.Mesh(geometry, materials);
+    card.position.set(x, 0, 0);
+    card.userData = { color, value };
     scene.add(card);
     return card;
 }
 
-function initGame() {
-    // Initial Hand (5 Cards)
-    const colors = ['Red', 'Blue', 'Green', 'Yellow'];
-    for(let i = 0; i < 5; i++) {
-        const c = colors[Math.floor(Math.random() * colors.length)];
-        const v = Math.floor(Math.random() * 10);
-        hand.push(createCardMesh(c, v, (i - 2) * 1.2));
-    }
-}
+// --- 3. Interaction (Raycasting) ---
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
 
-// Click Detection
 window.addEventListener('click', (event) => {
     mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
     mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-
+    
     raycaster.setFromCamera(mouse, camera);
-    const intersects = raycaster.intersectObjects(hand);
-
-    if (intersects.length > 0) {
-        const clickedCard = intersects[0].object;
-        playCard(clickedCard);
+    const found = raycaster.intersectObjects(scene.children);
+    
+    if (found.length > 0 && found[0].object.userData.color) {
+        handlePlay(found[0].object);
     }
 });
 
-function playCard(card) {
-    // Basic Animation: Move to center
-    card.position.set(0, 0.1, 0);
-    card.rotation.x = Math.PI / 2;
-    console.log(`Played ${card.userData.color} ${card.userData.value}`);
-    // You can add logic here to remove from hand array
+function handlePlay(card) {
+    // Replace alert() with UI feedback
+    const errorDiv = document.getElementById('error');
+    errorDiv.style.opacity = "1";
+    setTimeout(() => errorDiv.style.opacity = "0", 2000);
+    
+    // Add logic here to move the card mesh to the center of the "table"
 }
 
-// Render Loop
+// Lighting & Loop
+scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+camera.position.z = 5;
+
 function animate() {
     requestAnimationFrame(animate);
     renderer.render(scene, camera);
 }
-
-initGame();
 animate();

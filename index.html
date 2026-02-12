@@ -1,27 +1,21 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D UNO - Discord Activity</title>
     <style>
-        body { margin: 0; overflow: hidden; background: #1a1a1a; font-family: sans-serif; }
-        #ui-layer {
-            position: absolute; top: 20px; width: 100%;
-            text-align: center; color: white; pointer-events: none;
+        body { margin: 0; overflow: hidden; background: #18191c; }
+        #overlay {
+            position: absolute; top: 10px; width: 100%; text-align: center;
+            color: white; font-family: sans-serif; pointer-events: none;
         }
-        #error-msg {
-            background: rgba(255, 0, 0, 0.7); padding: 10px;
-            display: none; border-radius: 5px;
+        .toast {
+            background: rgba(255, 68, 68, 0.9); padding: 10px 20px;
+            border-radius: 4px; display: inline-block; opacity: 0;
+            transition: opacity 0.3s;
         }
     </style>
 </head>
 <body>
-    <div id="ui-layer">
-        <h2 id="status">Your Turn</h2>
-        <div id="error-msg">Invalid Move!</div>
-    </div>
-
+    <div id="overlay"><div id="error" class="toast">Invalid Move!</div></div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="game.js"></script>
 </body>
