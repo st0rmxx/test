@@ -1,27 +1,52 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Tactics Board</title>
     <style>
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #18191c; }
-        #toolbar {
-            position: absolute; top: 10px; left: 10px; z-index: 10;
-            display: flex; gap: 5px; background: #1e1f22; padding: 8px;
-            border-radius: 5px; border: 1px solid #4e5058;
+        body, html { 
+            margin: 0; padding: 0; width: 100%; height: 100%; 
+            overflow: hidden; background: #18191c; 
         }
-        button { background: #5865f2; color: white; border: none; padding: 8px; border-radius: 3px; cursor: pointer; font-weight: bold; }
+        #toolbar {
+            position: absolute; top: 15px; left: 15px; z-index: 100;
+            display: flex; gap: 10px; background: rgba(30, 31, 34, 0.9);
+            padding: 12px; border-radius: 8px; border: 1px solid #4e5058;
+            pointer-events: auto;
+        }
+        /* The Canvas fix for Discord */
+        #board { 
+            position: fixed; top: 0; left: 0; 
+            width: 100%; height: 100%; 
+            background: #2e7d32; 
+            z-index: 1; 
+            cursor: crosshair;
+            touch-action: none; /* Prevents Discord from scrolling while drawing */
+            pointer-events: auto;
+        }
+        .btn {
+            background: #5865f2; color: white; border: none; 
+            padding: 10px 15px; border-radius: 4px; 
+            cursor: pointer; font-weight: bold;
+        }
+        .btn:active { background: #4752c4; }
+        .dot { width: 30px; height: 30px; border-radius: 50%; border: 2px solid #fff; cursor: pointer; }
     </style>
 </head>
 <body>
-    <div id="toolbar">
-        <button onclick="mode='draw'">BRUSH</button>
-        <button onclick="mode='erase'">ERASER</button>
-        <button onclick="clearBoard()" style="background:#ed4245">CLEAR</button>
-    </div>
 
-    <canvas id="board" style="position:fixed; top:0; left:0; width:100%; height:100%; background:#2e7d32; z-index:1;"></canvas>
+<div id="toolbar">
+    <button class="btn" onclick="setMode('draw')">BRUSH</button>
+    <button class="btn" onclick="setMode('erase')" style="background:#4f545c">ERASER</button>
+    <button class="btn" onclick="clearBoard()" style="background:#ed4245">CLEAR</button>
+    <div class="dot" style="background: #ffffff" onclick="setColor('#ffffff')"></div>
+    <div class="dot" style="background: #ffff00" onclick="setColor('#ffff00')"></div>
+    <div class="dot" style="background: #00ffff" onclick="setColor('#00ffff')"></div>
+</div>
 
-    <script src="game.js"></script>
+<canvas id="board"></canvas>
+
+<script src="game.js"></script>
 </body>
 </html>

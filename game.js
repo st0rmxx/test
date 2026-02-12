@@ -3,70 +3,108 @@ const ctx = canvas.getContext('2d');
 
 let drawing = false;
 let mode = 'draw';
-let color = 'white';
+let color = '#ffffff';
 
 function init() {
-    // Set internal resolution to match screen
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
-    
-    // Fill the green field
+    drawField();
+}
+
+function drawField() {
+    // Fill Green
     ctx.fillStyle = '#2e7d32';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    
-    // Draw simple white lines
-    ctx.strokeStyle = 'white';
+
+    // Draw White Markings
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
     ctx.lineWidth = 4;
-    ctx.strokeRect(20, 20, canvas.width - 40, canvas.height - 40);
+
+    const margin = 40;
+    const w = canvas.width - (margin * 2);
+    const h = canvas.height - (margin * 2);
+
+    // Outer box
+    ctx.strokeRect(margin, margin, w, h);
+
+    // Halfway line
+    ctx.beginPath();
+    ctx.moveTo(canvas.width / 2, margin);
+    ctx.lineTo(canvas.width / 2, h + margin);
+    ctx.stroke();
+
+    // Center circle
+    ctx.beginPath();
+    ctx.arc(canvas.width / 2, canvas.height / 2, 70, 0, Math.PI * 2);
+    ctx.stroke();
 }
 
 
-function getPos(e) {
-    const x = e.clientX || (e.touches && e.touches[0].clientX);
-    const y = e.clientY || (e.touches && e.touches[0].clientY);
-    return { x, y };
+
+// THE COORDINATE FIX: Maps mouse directly to canvas pixels
+function getPointerPos(e) {
+    const rect = canvas.getBoundingClientRect();
+    const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+    const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+    
+    return {
+        x: clientX - rect.left,
+        y: clientY - rect.top
+    };
 }
 
-canvas.addEventListener('mousedown', (e) => {
+function startDrawing(e) {
     drawing = true;
-    const {x, y} = getPos(e);
+    const { x, y } = getPointerPos(e);
     ctx.beginPath();
     ctx.moveTo(x, y);
-});
+}
 
-window.addEventListener('mouseup', () => drawing = false);
-
-canvas.addEventListener('mousemove', (e) => {
+function draw(e) {
     if (!drawing) return;
-    const {x, y} = getPos(e);
-    
-    ctx.lineWidth = mode === 'erase' ? 40 : 5;
-    ctx.strokeStyle = mode === 'erase' ? '#2e7d32' : color;
+    const { x, y } = getPointerPos(e);
+
+    ctx.lineWidth = mode === 'erase' ? 40 : 6;
     ctx.lineCap = 'round';
-    
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = mode === 'erase' ? '#2e7d32' : color;
+
     ctx.lineTo(x, y);
     ctx.stroke();
-});
-
-// Global for the HTML buttons
-window.clearBoard = () => init();
-
-// Touch support for mobile
-canvas.addEventListener('touchstart', (e) => {
-    drawing = true;
-    const {x, y} = getPos(e);
+    
+    // Smooth the line
     ctx.beginPath();
     ctx.moveTo(x, y);
-    e.preventDefault();
-}, {passive: false});
+}
 
-canvas.addEventListener('touchmove', (e) => {
-    if (!drawing) return;
-    const {x, y} = getPos(e);
-    ctx.lineTo(x, y);
-    ctx.stroke();
-    e.preventDefault();
-}, {passive: false});
+function stopDrawing() {
+    drawing = false;
+    ctx.beginPath();
+}
 
+// Global UI Functions
+window.setMode = (m) => mode = m;
+window.setColor = (c) => { color = c; mode = 'draw'; };
+window.clearBoard = () => drawField();
+
+// Mouse Listeners
+canvas.addEventListener('mousedown', startDrawing);
+canvas.addEventListener('mousemove', draw);
+window.addEventListener('mouseup', stopDrawing);
+
+// Touch Support (Critical for Mobile Discord)
+canvas.addEventListener('touchstart', (e) => { 
+    startDrawing(e); 
+    e.preventDefault(); 
+}, { passive: false });
+
+canvas.addEventListener('touchmove', (e) => { 
+    draw(e); 
+    e.preventDefault(); 
+}, { passive: false });
+
+canvas.addEventListener('touchend', stopDrawing);
+
+// Final Initialization
 window.addEventListener('resize', init);
 init();
